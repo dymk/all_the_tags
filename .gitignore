@@ -1,0 +1,11 @@
+*.dSYM
+*.o
+*.a
+.DS_Store
+doc/
+test/tmp
+tmp
+all_the_tags_testrunner
+*.cmake
+CMakeFiles
+CMakeCache.txt

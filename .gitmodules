@@ -1,0 +1,6 @@
+[submodule "asmjit"]
+	path = asmjit
+	url = https://github.com/kobalicek/asmjit.git
+[submodule "test/hayai"]
+	path = test/hayai
+	url = https://github.com/nickbruun/hayai.git
