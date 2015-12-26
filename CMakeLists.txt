@@ -29,3 +29,7 @@ add_executable(all_the_tags_testrunner
     test/test_tag_implication.cc
     test/test_tag_values.cc)
 target_link_libraries(all_the_tags_testrunner all_the_tags asmjit gtest)
+
+add_executable(all_the_tags_fuzzer
+    test/fuzzer.cc)
+target_link_libraries(all_the_tags_fuzzer all_the_tags asmjit)

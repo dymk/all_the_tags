@@ -419,3 +419,44 @@ TEST_F(TagImplicationTest, TwoNodesRemoval_AutoClean) {
   ASSERT_EQ(a->meta_node, b->meta_node);
   ASSERT_EQ(c->meta_node, d->meta_node);
 }
+
+// test case found with AFL
+// destroying a tag that was implied by another would
+// result in a use-after-free when the implier was destroyed
+TEST(SimpleTagImplicationTest, AFLTestCase1) {
+  Context ctx;
+  Tag *a = ctx.new_tag(0);
+  Tag *b = ctx.new_tag(2);
+
+  ASSERT_TRUE(a->imply(b));
+  ASSERT_EQ(a->implies.size(), 1);
+
+  ctx.destroy_tag(b);
+  b = nullptr;
+
+  ASSERT_EQ(a->implies.size(), 0);
+  ctx.destroy_tag(a);
+  a = nullptr;
+}
+
+// test case found with AFL
+// implying a tag to itself in some cases
+// results in an assertion failure once an implied tag is deleted
+TEST(SimpleTagImplicationTest, AFLTestCase2) {
+  Context ctx;
+  Tag *a = ctx.new_tag(0);
+  Tag *b = ctx.new_tag(2);
+
+  ASSERT_TRUE(a->imply(b));
+  ASSERT_FALSE(a->imply(a));
+  ASSERT_EQ(a->implies.size(), 1);
+
+  ctx.destroy_tag(b);
+  b = nullptr;
+
+  ASSERT_EQ(a->implies.size(), 0);
+  ASSERT_FALSE(a->unimply(a));
+  ASSERT_EQ(a->implies.size(), 0);
+  ctx.destroy_tag(a);
+  a = nullptr;
+}

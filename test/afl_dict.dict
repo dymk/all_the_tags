@@ -1,0 +1,27 @@
+# create new tag/entity
+tag="tag"
+ent="ent"
+
+# add/remove tag from entity
+add_tagging="add"
+rem_tagging="rem"
+
+# (un)imply tags from each other
+imply="imp"
+unimply="uimp"
+
+# delete tags/entities
+rm_tag="rmt"
+rm_ent="rme"
+
+# get tag/entity by id
+tag_by_id="tbid"
+ent_by_id="ebid"
+
+mark_dirty="mkd"
+make_clean="mkc"
+
+query="qry"
+and="+"
+or="|"
+not="!"
