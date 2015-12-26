@@ -460,3 +460,37 @@ TEST(SimpleTagImplicationTest, AFLTestCase2) {
   ctx.destroy_tag(a);
   a = nullptr;
 }
+
+// test case found with AFL
+// destroying a tag belonging to a metanode didn't remove
+// the reference within the metanode to the tag (dangling reference)
+// if entity_count was called on the metanode, it'd call entity_count
+// on that free'd memory
+/**
+ tag 1
+ tag
+ tag
+ imp 0 2
+ imp 2 0
+ rmt 0
+ qry 1 +|1 2+0002
+ */
+TEST(SimpleTagImplicationTest, AFLTestCase3) {
+  Context ctx;
+  Tag *t1 = ctx.new_tag(1);
+  Tag *t0 = ctx.new_tag();
+  Tag *t2 = ctx.new_tag();
+
+  t0->imply(t2);
+  t2->imply(t0);
+  ctx.destroy_tag(t0);
+
+  QueryClause *clause = build_and(
+    build_or(build_lit(t1), build_lit(t2)),
+    build_lit(t2));
+
+  clause = optimize(clause, QueryOptFlags_Reorder);
+  ctx.make_clean();
+  ASSERT_TRUE(ctx.query(clause, [](Entity* e){}) >= 0);
+  delete clause;
+}

@@ -43,13 +43,25 @@ int main(int argc, char** argv) {
         }
         if(cmd == "tbid") {
             if(have_op1) {
-                context.tag_by_id(op1);
+                auto t1 = context.tag_by_id(op1);
+                if(t1) {
+                    std::cerr << "got tag " << t1->id << " (" << t1 << ")" << std::endl;
+                }
+                else {
+                    std::cerr << "no tag " << op1 << std::endl;
+                }
             }
         }
         else
         if(cmd == "ebid") {
             if(have_op1) {
-                context.entity_by_id(op1);
+                auto e1 = context.entity_by_id(op1);
+                if(e1) {
+                    std::cerr << "got ent " << e1->id << " (" << e1 << ")" << std::endl;
+                }
+                else {
+                    std::cerr << "no ent " << op1 << std::endl;
+                }
             }
         }
         else
@@ -310,6 +322,7 @@ QueryClause *parse(Context& c, const char*& clause_str) {
             assert(t1 >= 0);
             Tag *t = c.tag_by_id(t1);
             if(t) {
+                std::cerr << "built lit tag for " << t->id << " (" << t << ")" << std::endl;
                 return build_lit(t, (int) t1);
             }
             else {

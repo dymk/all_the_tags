@@ -478,6 +478,11 @@ void Context::destroy_tag(Tag *tag) {
     implier->unimply(tag);
   }
 
+  // remove from its SCC metanode
+  if(tag->meta_node) {
+    assert(tag->meta_node->tags.erase(tag) == 1);
+  }
+
   assert(id_to_tag.erase(tag->id) == 1);
   delete tag;
 }
