@@ -7,6 +7,17 @@
 
 QueryClause *parse(Context& c, const char*& clause_str);
 
+// 0 -> inf are TokID (integer numbers)
+// -1 -> -inf are reserved for other tokens
+enum Token : int {
+    TokInv    = -1,
+    TokEnd    = -2,
+    TokAnd    = -3,
+    TokOr     = -4,
+    TokNot    = -5,
+};
+Token token(const char*& clause_str);
+
 int main(int argc, char** argv) {
     Context context;
 
@@ -185,8 +196,18 @@ int main(int argc, char** argv) {
             std::cerr << "querying '" << str_clause << "'...";
 
             const char* c_clause = str_clause.c_str();
+
+            // first digit is optimization flags
+            QueryOptFlags flags = (QueryOptFlags) 0;
+            if(isdigit(*c_clause)) {
+                int tok = token(c_clause);
+                assert(tok >= 0);
+                flags = (QueryOptFlags) tok;
+            }
+
             QueryClause *clause = parse(context, c_clause);
             if(clause) {
+                clause = optimize(clause, flags);
                 std::cerr << std::endl;
                 clause->debug_print();
 
@@ -204,16 +225,6 @@ int main(int argc, char** argv) {
 
     return 0;
 }
-
-// 0 -> inf are TokID (integer numbers)
-// -1 -> -inf are reserved for other tokens
-enum Token : int {
-    TokInv    = -1,
-    TokEnd    = -2,
-    TokAnd    = -3,
-    TokOr     = -4,
-    TokNot    = -5,
-};
 
 Token token(const char*& clause_str) {
     while(isspace(*clause_str)) {
