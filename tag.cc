@@ -2,6 +2,10 @@
 #include "context.h"
 
 bool Tag::imply(Tag *other) {
+  if(this == other) {
+    return false;
+  }
+
   auto a = other->implied_by.insert(this).second;
   auto b = implies.insert(other).second;
   assert(a == b);
@@ -11,6 +15,10 @@ bool Tag::imply(Tag *other) {
   return a;
 }
 bool Tag::unimply(Tag *other) {
+  if(this == other) {
+    return false;
+  }
+
   auto a = other->implied_by.erase(this) == 1;
   auto b = implies.erase(other) == 1;
   assert(a == b);

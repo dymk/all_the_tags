@@ -6,6 +6,9 @@ doc/
 test/tmp
 tmp
 all_the_tags_testrunner
+all_the_tags_fuzzer
+Makefile
 *.cmake
 CMakeFiles
 CMakeCache.txt
+afl-dir

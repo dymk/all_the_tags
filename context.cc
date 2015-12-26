@@ -195,7 +195,8 @@ void Context::dirty_tag_imply_dag(Tag* tag, bool gained_imply, Tag* target) {
   else {
     // the two nodes must be part of the DAG if they're having an implication
     // between them removed
-    assert(tag_mn && target_mn);
+    assert(tag_mn);
+    assert(target_mn);
 
     // check if there's a path between target_mn and tag_mn
     // if there is then a cycle was broken
@@ -469,6 +470,12 @@ void Context::destroy_tag(Tag *tag) {
   // remove all impliers
   while(tag->implies.size()) {
     tag->unimply(*(tag->implies.begin()));
+  }
+
+  // remove all implied by
+  while(tag->implied_by.size()) {
+    Tag *implier = *(tag->implied_by.begin());
+    implier->unimply(tag);
   }
 
   assert(id_to_tag.erase(tag->id) == 1);

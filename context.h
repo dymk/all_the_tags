@@ -13,6 +13,9 @@
 
 struct Tag;
 
+// error codes for `Context::query`
+static const int ERR_CONTEXT_DIRTY = -1;
+
 struct Context {
 private:
   id_type last_tag_id;
@@ -58,30 +61,33 @@ public:
   // look up tag by id
   Tag* tag_by_id(id_type tid) const;
 
-  // notify the context that a node gained or
-  // removed a parent, and to recalculate the tag tree's pre/post numbers
-  void dirty_tag_parent_tree(Tag* dirtying_tag);
-
+  // INTERNAL
   // notify the context that 'dirtying_tag' gained/lost 'other' as an implied
   // tag. 'gained_imply' true if it now implies other, false if implication removed
+  // should only be called by Tag* internally
   void dirty_tag_imply_dag(Tag* dirtying_tag, bool gained_imply, Tag* other);
 
+public:
   // look up entity by id
   Entity* entity_by_id(id_type eid) const;
 
-  // calls 'match' with all entities that match the QueryClause
+  // calls 'match' callback with all entities that match the QueryClause
+  // returns true if query was succesfull, false otherwise (e.g. context was dirty)
   template<class UnaryFunction>
-  void query(const QueryClause *q, UnaryFunction match) const {
+  long query(const QueryClause *q, UnaryFunction match) const {
     if(is_dirty()) {
-      assert(false && "can't call query on dirty context");
+      return ERR_CONTEXT_DIRTY;
     }
 
+    long i = 0;
     for(auto&& iter : id_to_entity) {
+      i++;
       auto e = iter.second;
       if(q->matches_set(e->tags)) {
         match(e);
       }
     }
+    return i;
   }
 
   // context statistics
