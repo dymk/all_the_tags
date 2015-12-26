@@ -207,8 +207,11 @@ int main(int argc, char** argv) {
 
             QueryClause *clause = parse(context, c_clause);
             if(clause) {
+                std::cerr << std::endl << "before opt: " << std::endl;
+                clause->debug_print();
+
                 clause = optimize(clause, flags);
-                std::cerr << std::endl;
+                std::cerr << std::endl << "after opt: " << std::endl;
                 clause->debug_print();
 
                 context.query(clause, [&](const Entity *e) {
