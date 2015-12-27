@@ -219,16 +219,15 @@ int main(int argc, char** argv) {
 
             QueryClause *clause = parse(context, c_clause);
             if(clause) {
-                std::cerr << std::endl << "before opt: " << std::endl;
-                clause->debug_print();
-
+                std::cerr << "num ents before: " << clause->entity_count() << std::endl;
                 clause = optimize(clause, flags);
-                std::cerr << std::endl << "after opt: " << std::endl;
-                clause->debug_print();
+                std::cerr << "num ents after:  " << clause->entity_count() << std::endl;
 
+                std::cerr << "matching: ";
                 context.query(clause, [&](const Entity *e) {
                     std::cerr << e->id << ", ";
                 });
+                std::cerr << std::endl;
 
                 delete clause;
             }
@@ -322,7 +321,6 @@ QueryClause *parse(Context& c, const char*& clause_str) {
             assert(t1 >= 0);
             Tag *t = c.tag_by_id(t1);
             if(t) {
-                std::cerr << "built lit tag for " << t->id << " (" << t << ")" << std::endl;
                 return build_lit(t, (int) t1);
             }
             else {
