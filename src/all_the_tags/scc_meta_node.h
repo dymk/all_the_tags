@@ -1,7 +1,7 @@
 #ifndef __SCC_META_NODE_H__
 #define __SCC_META_NODE_H__
 
-#include "context.h"
+#include "all_the_tags/context.h"
 
 struct SCCMetaNode {
   std::unordered_set<SCCMetaNode*> children;

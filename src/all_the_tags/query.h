@@ -5,8 +5,8 @@
 #include <algorithm>
 #include <iostream>
 
-#include "tag.h"
-#include "entity.h"
+#include "all_the_tags/tag.h"
+#include "all_the_tags/entity.h"
 
 struct QueryClause;
 struct QueryClauseBin;

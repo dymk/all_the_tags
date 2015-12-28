@@ -7,9 +7,9 @@
 #include <algorithm>
 #include <utility>
 
-#include "entity.h"
-#include "query.h"
-#include "scc_meta_node.h"
+#include "all_the_tags/entity.h"
+#include "all_the_tags/query.h"
+#include "all_the_tags/scc_meta_node.h"
 
 struct Tag;
 

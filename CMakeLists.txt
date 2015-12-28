@@ -5,10 +5,10 @@ set(ASMJIT_STATIC TRUE)
 add_subdirectory(asmjit)
 target_link_libraries(asmjit)
 
-include_directories(.)
+include_directories(src)
 include_directories(asmjit/src)
 add_library(all_the_tags STATIC
-    context.cc query.cc tag.cc)
+    src/all_the_tags/context.cc src/all_the_tags/query.cc src/all_the_tags/tag.cc)
 
 target_compile_features(all_the_tags PUBLIC
     cxx_auto_type cxx_lambdas)

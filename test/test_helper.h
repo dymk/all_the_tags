@@ -2,8 +2,8 @@
 #define __TEST_HELPER_H__
 
 #include "gtest/gtest.h"
-#include "context.h"
-#include "query.h"
+#include "all_the_tags/context.h"
+#include "all_the_tags/query.h"
 
 #define SET(T, ARR...) std::unordered_set<T>(ARR)
 

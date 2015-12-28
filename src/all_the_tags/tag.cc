@@ -1,5 +1,5 @@
-#include "tag.h"
-#include "context.h"
+#include "all_the_tags/tag.h"
+#include "all_the_tags/context.h"
 
 bool Tag::imply(Tag *other) {
   if(this == other) {

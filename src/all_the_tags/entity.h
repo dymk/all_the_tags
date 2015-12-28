@@ -2,8 +2,8 @@
 #define __ENTITY_H__
 
 #include <unordered_set>
-#include "id.h"
-#include "tag.h"
+#include "all_the_tags/id.h"
+#include "all_the_tags/tag.h"
 
 // An edge between an Entity and a Tag,
 // with an additional bit of information: a 'rel'ationship
