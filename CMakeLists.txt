@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(all_the_tags CXX)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 set(ASMJIT_STATIC TRUE)
 add_subdirectory(asmjit)
 target_link_libraries(asmjit)
