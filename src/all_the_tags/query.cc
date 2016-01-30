@@ -7,7 +7,7 @@
 #include <functional>
 #include <queue>
 #include <vector>
-#include <bitset>
+#include <utility>
 
 int QueryClauseMetaNode::entity_count() const {
   return node->entity_count();
@@ -158,21 +158,29 @@ QueryClause* hc_tree_optimize(QueryClauseBin* clause) {
     recycle_bin.push(top);
   }
 
+  struct hash_scc_rel_pair {
+    std::size_t operator()(const std::pair<SCCMetaNode*,rel_type>& p) const {
+      return std::hash<SCCMetaNode*>()(p.first) ^ std::hash<rel_type>()(p.second);
+    }
+  };
+
   // remove duplicate metanodes within the leafs
   {
-    std::unordered_set<SCCMetaNode*> meta_leafs;
+    std::unordered_set<std::pair<SCCMetaNode*, rel_type>, hash_scc_rel_pair> meta_leafs;
     for(auto&& leaf : unsorted_leafs) {
       auto ml = dynamic_cast<QueryClauseMetaNode*>(leaf);
       if(!ml) continue;
 
       // is a metanode, include only a unique set
-      if(meta_leafs.find(ml->node) != meta_leafs.end()) {
+      auto target_pair = std::make_pair(ml->node, ml->rel);
+
+      if(meta_leafs.find(target_pair) != meta_leafs.end()) {
         // metanode is already in this "or", remove it
         delete leaf;
         leaf = nullptr;
       }
       else {
-        meta_leafs.insert(ml->node);
+        meta_leafs.insert(target_pair);
       }
     }
   }
@@ -242,15 +250,12 @@ struct QueryClauseJitNode : public QueryClause {
 };
 
 // TODO: merge this logic with the matches_set methods on MetaNode and LitNode
-bool extern_set_has_tag(const Entity::tags_set* tags, Tag* tag) {
-  return tags->find(tag) != tags->end();
+bool extern_set_has_tag(Tag* tag, rel_type rel, const Entity::tags_set* tags) {
+  return QueryClauseLit::matches_set(tag, rel, *tags);
 }
-bool extern_set_has_meta(const Entity::tags_set* tags, const SCCMetaNode* node) {
-  for(auto t : *tags) {
-    if(t.first->meta_node == node) return true;
-  }
 
-  return false;
+bool extern_set_has_meta(const SCCMetaNode* node, rel_type rel, const Entity::tags_set* tags) {
+  return QueryClauseMetaNode::matches_set(node, rel, *tags);
 }
 
 QueryClause* jit_optimize(QueryClause* clause) {
@@ -294,15 +299,17 @@ QueryClause* jit_optimize(QueryClause* clause) {
       c.bind(Lcompare_done);
     }
     else if(auto lit = dynamic_cast<const QueryClauseLit*>(clause)) {
-      X86CallNode* call = c.call(has_tag_func_ptr, FuncBuilder2<int, int*, int*>(kCallConvHost));
-      call->setArg(0, tag_set_ptr);
-      call->setArg(1, imm_ptr(lit->t));
+      X86CallNode* call = c.call(has_tag_func_ptr, FuncBuilder3<int, Tag*, rel_type, int*>(kCallConvHost));
+      call->setArg(0, imm_ptr(lit->t));
+      call->setArg(1, imm_u(lit->rel_mask));
+      call->setArg(2, tag_set_ptr);
       call->setRet(0, res_var);
     }
     else if(auto meta = dynamic_cast<const QueryClauseMetaNode*>(clause)) {
-      X86CallNode* call = c.call(has_meta_func_ptr, FuncBuilder2<int, int*, int*>(kCallConvHost));
-      call->setArg(0, tag_set_ptr);
-      call->setArg(1, imm_ptr(meta->node));
+      X86CallNode* call = c.call(has_meta_func_ptr, FuncBuilder3<int, SCCMetaNode*, rel_type, int*>(kCallConvHost));
+      call->setArg(0, imm_ptr(meta->node));
+      call->setArg(1, imm_u(meta->rel));
+      call->setArg(2, tag_set_ptr);
       call->setRet(0, res_var);
     }
     else if(auto any = dynamic_cast<const QueryClauseAny*>(clause)) {

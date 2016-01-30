@@ -23,6 +23,36 @@ public:
 
 #define OPTIM_AND_CAST(clause) dynamic_cast<QueryClauseBin*>(optimize(clause))
 
+#define TEST_LIT(lit, ent, query, expect, err_str) \
+    do { \
+      if(ctx.is_dirty()) { ctx.make_clean(); } \
+      if(query->matches_set(ent->tags) != expect) { \
+        std::cerr << err_str << #lit << std::endl; \
+        query->debug_print(); \
+      } \
+      ASSERT_EQ(query->matches_set(ent->tags), expect); \
+    } while(0)
+
+#define TEST_TRUE(lit, ent) \
+  do { QueryClause *query = lit; \
+    TEST_LIT(lit, ent, query, true, "lit failed: ");   \
+    query = optimize(query, QueryOptFlags_Reorder);    \
+    TEST_LIT(lit, ent, query, true, "reordered lit failed: "); \
+    query = optimize(query, QueryOptFlags_JIT); \
+    TEST_LIT(lit, ent, query, true, "jit/reordered lit failed: "); \
+    delete query; \
+  } while(0)
+
+#define TEST_FALS(lit, ent) \
+  do { QueryClause *query = lit; \
+    TEST_LIT(lit, ent, query, false, "lit failed: ");   \
+    query = optimize(query, QueryOptFlags_Reorder);    \
+    TEST_LIT(lit, ent, query, false, "reordered lit failed: "); \
+    query = optimize(query, QueryOptFlags_JIT); \
+    TEST_LIT(lit, ent, query, false, "jit/reordered lit failed: "); \
+    delete query; \
+  } while(0)
+
 TEST_F(QueryTest, QueryOrOptims1) {
   // add tag 'b' to e1, it should be first in the or clause
   e1->add_tag(b);
@@ -149,57 +179,31 @@ TEST_F(QueryTest, Implication1) {
 }
 
 TEST_F(QueryTest, QueryOptimJITLit) {
-  auto query = build_lit(a);
-
-  if(debug) query->debug_print();
-  query = dynamic_cast<QueryClause*>(optimize(query, QueryOptFlags_JIT));
-  if(debug) query->debug_print();
-
-  ASSERT_FALSE(query->matches_set(e1->tags));
+  TEST_FALS(build_lit(a), e1);
   e1->add_tag(a);
-  ASSERT_TRUE(query->matches_set(e1->tags));
-
-  delete query;
+  TEST_TRUE(build_lit(a), e1);
 }
 
 TEST_F(QueryTest, QueryOptimJITLit_Ors) {
-  QueryClause* query = build_or(
-    build_lit(a),
-    build_lit(b));
+  TEST_FALS(build_or(build_lit(a), build_lit(b)), e1);
+  TEST_FALS(build_or(build_lit(a), build_lit(b)), e2);
 
-  if(debug) query->debug_print();
-  query = dynamic_cast<QueryClause*>(optimize(query, QueryOptFlags_JIT));
-  if(debug) query->debug_print();
-
-  ASSERT_FALSE(query->matches_set(e1->tags));
-  ASSERT_FALSE(query->matches_set(e2->tags));
   e1->add_tag(a);
-  ASSERT_TRUE(query->matches_set(e1->tags));
-  ASSERT_FALSE(query->matches_set(e2->tags));
+  TEST_TRUE(build_or(build_lit(a), build_lit(b)), e1);
+  TEST_FALS(build_or(build_lit(a), build_lit(b)), e2);
 
   e2->add_tag(b);
-  ASSERT_TRUE(query->matches_set(e1->tags));
-  ASSERT_TRUE(query->matches_set(e2->tags));
+  TEST_TRUE(build_or(build_lit(a), build_lit(b)), e1);
+  TEST_TRUE(build_or(build_lit(a), build_lit(b)), e2);
 
-  delete query;
 }
 
 TEST_F(QueryTest, QueryOptimJITLit_Ands) {
-  QueryClause* query = build_and(
-    build_lit(a),
-    build_lit(b));
-
-  if(debug) query->debug_print();
-  query = dynamic_cast<QueryClause*>(optimize(query, QueryOptFlags_JIT));
-  if(debug) query->debug_print();
-
-  ASSERT_FALSE(query->matches_set(e1->tags));
+  TEST_FALS(build_and(build_lit(a), build_lit(b)), e1);
   e1->add_tag(a);
-  ASSERT_FALSE(query->matches_set(e1->tags));
+  TEST_FALS(build_and(build_lit(a), build_lit(b)), e1);
   e1->add_tag(b);
-  ASSERT_TRUE(query->matches_set(e1->tags));
-
-  delete query;
+  TEST_TRUE(build_and(build_lit(a), build_lit(b)), e1);
 }
 
 TEST_F(QueryTest, TestQueryRels) {
@@ -212,26 +216,8 @@ TEST_F(QueryTest, TestQueryRels) {
   // e1 has b, c with rel 2
   ASSERT_TRUE(e1->add_tag(b, 2));
 
-  // e1 has: a(1), b(1, 2), c(1, 2)
+  // e1 has: a(1), b(1, 2), c(1, 2)(implied)
   std::unique_ptr<QueryClause> query;
-
-#define TEST_TRUE(lit, ent) \
-  do { auto query = std::unique_ptr<QueryClause>(lit); \
-    if(!query->matches_set(ent->tags)) {               \
-      std::cerr << "lit failed: " << #lit << std::endl; \
-      query->debug_print();                            \
-    }                                                  \
-    ASSERT_TRUE(query->matches_set(ent->tags));        \
-  } while(0)
-
-#define TEST_FALS(lit, ent) \
-  do { auto query = std::unique_ptr<QueryClause>(lit); \
-    if(query->matches_set(ent->tags)) {                \
-      std::cerr << "lit failed: " << #lit << std::endl; \
-      query->debug_print();                            \
-    }                                                  \
-    ASSERT_FALSE(query->matches_set(ent->tags));       \
-  } while(0)
 
   TEST_TRUE(build_lit(a, 1), e1);
   TEST_TRUE(build_lit(b, 1), e1);
@@ -249,7 +235,7 @@ TEST_F(QueryTest, TestQueryRels) {
   d->imply(e);
   c->imply(d);
 
-  // e2 has c(4), d(4, 8), e(4, 8)
+  // e2 has c(4), d(4, 8)(implied), e(4, 8)
   e2->add_tag(c, 4);
   e2->add_tag(e, 8);
 
@@ -264,4 +250,22 @@ TEST_F(QueryTest, TestQueryRels) {
   TEST_FALS(build_lit(d, 2), e2); TEST_FALS(build_lit(e, 2), e2);
   TEST_TRUE(build_lit(d, 4), e2); TEST_TRUE(build_lit(e, 4), e2);
   TEST_TRUE(build_lit(d, 8), e2); TEST_TRUE(build_lit(e, 8), e2);
+
+  e->unimply(d);
+  c->unimply(d);
+  ASSERT_EQ(d->implied_by, SET(Tag*, {}));
+
+  // e2 has c(4), e(4, 8)
+  TEST_TRUE(build_lit(e), e2);
+  TEST_FALS(build_lit(d), e2);
+
+  // entity only has to have one of the given relationships for the rel mask
+  // on a literal, not both
+  TEST_TRUE(build_lit(c, 1|4), e1);
+  TEST_TRUE(build_lit(c, 1|4), e2);
+
+  // but an exact rel mask can be specified by AND'ing all the desired
+  // rel masks
+  TEST_FALS(build_and(build_lit(c, 1), build_lit(c, 4)), e1);
+  TEST_FALS(build_and(build_lit(c, 1), build_lit(c, 4)), e2);
 }

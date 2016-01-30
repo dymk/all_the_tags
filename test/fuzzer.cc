@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
             break;
         }
 
-        line = line.substr(std::min(line.length(), 30UL));
+        line = line.substr(0, std::min(line.length(), 30UL));
 
         std::stringstream stream(line);
         std::string cmd;
@@ -42,6 +42,7 @@ int main(int argc, char** argv) {
         have_op1 = !!(stream >> op1);
         have_op2 = !!(stream >> op2);
         have_op3 = !!(stream >> op3);
+
 
         if(!have_cmd) {
             std::cerr << "no op: " << line << std::endl;
@@ -326,7 +327,7 @@ QueryClause *parse(Context& c, const char*& clause_str) {
             assert(t1 >= 0);
             Tag *t = c.tag_by_id(t1);
             if(t) {
-                return build_lit(t, (int) t1);
+                return build_lit(t);
             }
             else {
                 return nullptr;

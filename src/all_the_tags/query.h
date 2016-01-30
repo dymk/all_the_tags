@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <algorithm>
 #include <iostream>
+#include <bitset>
 
 #include "all_the_tags/tag.h"
 #include "all_the_tags/entity.h"
@@ -134,13 +135,16 @@ struct QueryClauseLit : public QueryClause {
 
   virtual ~QueryClauseLit() { t = nullptr; }
   virtual bool matches_set(const Entity::tags_set& tags) const {
-    auto iter = tags.find(t);
+    return QueryClauseLit::matches_set(t, rel_mask, tags);
+  }
+
+  static inline bool matches_set(Tag *const tag, const rel_type rel_mask, const Entity::tags_set& tags) {
+    auto iter = tags.find(tag);
     if(iter == tags.end()) {
       return false;
     }
 
     rel_type rel = (*iter).second;
-
     return rel & rel_mask;
   }
 
@@ -153,7 +157,7 @@ struct QueryClauseLit : public QueryClause {
 
   virtual void debug_print(int indent = 0) const {
     print_indent(indent);
-    std::cerr << "lit(" << t->entity_count() << ") -> " << t->id << std::endl;
+    std::cerr << "lit(" << t->entity_count() << ") (" << std::bitset<8>(rel_mask) << ") -> " << t->id << std::endl;
   }
 };
 
@@ -165,6 +169,10 @@ struct QueryClauseMetaNode : public QueryClause {
   virtual ~QueryClauseMetaNode() { node = nullptr; }
 
   virtual bool matches_set(const Entity::tags_set& tags) const {
+    return QueryClauseMetaNode::matches_set(node, rel, tags);
+  }
+
+  static inline bool matches_set(SCCMetaNode const* node, const rel_type rel, const Entity::tags_set& tags) {
     // do any of the tags belong to this metanode
     // TODO: store set of relevant meta_nodes on posts instead of
     // tags directly
