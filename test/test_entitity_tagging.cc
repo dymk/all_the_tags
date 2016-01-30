@@ -62,11 +62,32 @@ public:
 
 TEST_F(EntityAndTagTest, TagEntity) {
   ASSERT_TRUE(e1->add_tag(foo));
-  ASSERT_EQ(e1->tags, Entity::tags_set({TagWithRel(foo)}));
+  ASSERT_EQ(e1->tags, Entity::tags_set({{foo, 1}}));
 
   ASSERT_TRUE(e1->remove_tag(foo));
   ASSERT_FALSE(e1->remove_tag(foo));
   ASSERT_EQ(e1->tags, Entity::tags_set({}));
+}
+
+TEST_F(EntityAndTagTest, TagEntityWithRels) {
+  ASSERT_EQ(0, foo->entity_count());
+  ASSERT_FALSE(e1->add_tag(foo, 0));
+  ASSERT_EQ(0, foo->entity_count());
+
+  ASSERT_TRUE(e1->add_tag(foo, 1));
+  ASSERT_EQ(1, foo->entity_count());
+
+  ASSERT_FALSE(e1->add_tag(foo, 1));
+  ASSERT_EQ(1, foo->entity_count());
+
+  ASSERT_TRUE(e1->add_tag(foo, 4));
+  ASSERT_EQ(1, foo->entity_count());
+
+  ASSERT_EQ(e1->tags, Entity::tags_set({{foo, 4|1}}));
+
+  ASSERT_TRUE(e1->remove_tag(foo, 1));
+  ASSERT_EQ(1, foo->entity_count());
+  ASSERT_EQ(e1->tags, Entity::tags_set({{foo, 4}}));
 }
 
 TEST_F(EntityAndTagTest, DestroyEntity) {
@@ -189,7 +210,7 @@ TEST_F(EntityAndTagTest2, RemovingEdge) {
 
 TEST_F(EntityAndRealTagTest, DestroyingCatTags) {
   e1->add_tag(cat);
-  ASSERT_EQ(e1->tags, Entity::tags_set({TagWithRel(cat)}));
+  ASSERT_EQ(e1->tags, Entity::tags_set({{cat, 1}}));
   ASSERT_EQ(ctx.num_tags(), 6);
 
   ctx.destroy_tag(cat);

@@ -134,12 +134,12 @@ struct QueryClauseLit : public QueryClause {
 
   virtual ~QueryClauseLit() { t = nullptr; }
   virtual bool matches_set(const Entity::tags_set& tags) const {
-    auto iter = tags.find(TagWithRel(t));
+    auto iter = tags.find(t);
     if(iter == tags.end()) {
       return false;
     }
 
-    rel_type rel = (*iter).rel;
+    rel_type rel = (*iter).second;
 
     return rel & rel_mask;
   }
@@ -159,8 +159,9 @@ struct QueryClauseLit : public QueryClause {
 
 struct QueryClauseMetaNode : public QueryClause {
   SCCMetaNode* node;
+  rel_type rel;
 
-  QueryClauseMetaNode(SCCMetaNode *node_) : node(node_) {}
+  QueryClauseMetaNode(SCCMetaNode *node_, rel_type rel_) : node(node_), rel(rel_) {}
   virtual ~QueryClauseMetaNode() { node = nullptr; }
 
   virtual bool matches_set(const Entity::tags_set& tags) const {
@@ -168,7 +169,9 @@ struct QueryClauseMetaNode : public QueryClause {
     // TODO: store set of relevant meta_nodes on posts instead of
     // tags directly
     for(auto t : tags) {
-      if(t.tag->meta_node == node) return true;
+      if((t.first->meta_node == node) && (t.second & rel)) {
+        return true;
+      }
     }
 
     return false;
@@ -178,7 +181,7 @@ struct QueryClauseMetaNode : public QueryClause {
   virtual int num_children() const { return 0; }
   virtual int entity_count() const;
   virtual QueryClauseMetaNode *dup() const {
-    return new QueryClauseMetaNode(node);
+    return new QueryClauseMetaNode(node, rel);
   }
 
   virtual void debug_print(int indent = 0) const;

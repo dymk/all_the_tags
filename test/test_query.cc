@@ -13,11 +13,11 @@ public:
     e2 = ctx.new_entity();
     assert(e1 && e2);
 
-    a = ctx.new_tag();
-    b = ctx.new_tag();
-    c = ctx.new_tag();
-    d = ctx.new_tag();
-    e = ctx.new_tag();
+    assert(a = ctx.new_tag());
+    assert(b = ctx.new_tag());
+    assert(c = ctx.new_tag());
+    assert(d = ctx.new_tag());
+    assert(e = ctx.new_tag());
   }
 };
 
@@ -200,4 +200,68 @@ TEST_F(QueryTest, QueryOptimJITLit_Ands) {
   ASSERT_TRUE(query->matches_set(e1->tags));
 
   delete query;
+}
+
+TEST_F(QueryTest, TestQueryRels) {
+  ASSERT_TRUE(a->imply(b));
+  ASSERT_TRUE(b->imply(c));
+
+  // e1 has a, b, c with rel 1
+  ASSERT_TRUE(e1->add_tag(a, 1));
+
+  // e1 has b, c with rel 2
+  ASSERT_TRUE(e1->add_tag(b, 2));
+
+  // e1 has: a(1), b(1, 2), c(1, 2)
+  std::unique_ptr<QueryClause> query;
+
+#define TEST_TRUE(lit, ent) \
+  do { auto query = std::unique_ptr<QueryClause>(lit); \
+    if(!query->matches_set(ent->tags)) {               \
+      std::cerr << "lit failed: " << #lit << std::endl; \
+      query->debug_print();                            \
+    }                                                  \
+    ASSERT_TRUE(query->matches_set(ent->tags));        \
+  } while(0)
+
+#define TEST_FALS(lit, ent) \
+  do { auto query = std::unique_ptr<QueryClause>(lit); \
+    if(query->matches_set(ent->tags)) {                \
+      std::cerr << "lit failed: " << #lit << std::endl; \
+      query->debug_print();                            \
+    }                                                  \
+    ASSERT_FALSE(query->matches_set(ent->tags));       \
+  } while(0)
+
+  TEST_TRUE(build_lit(a, 1), e1);
+  TEST_TRUE(build_lit(b, 1), e1);
+  TEST_TRUE(build_lit(c, 1), e1);
+
+  TEST_FALS(build_lit(a, 2), e1);
+  TEST_TRUE(build_lit(b, 2), e1);
+  TEST_TRUE(build_lit(c, 2), e1);
+
+  TEST_FALS(build_lit(a, 4), e1);
+  TEST_FALS(build_lit(b, 4), e1);
+  TEST_FALS(build_lit(c, 4), e1);
+
+  e->imply(d);
+  d->imply(e);
+  c->imply(d);
+
+  // e2 has c(4), d(4, 8), e(4, 8)
+  e2->add_tag(c, 4);
+  e2->add_tag(e, 8);
+
+  TEST_FALS(build_lit(a), e2);
+  TEST_TRUE(build_lit(c, 4), e2);
+  TEST_FALS(build_lit(c, 8), e2);
+  TEST_TRUE(build_or( build_lit(c, 4), build_lit(c, 8)), e2);
+  TEST_FALS(build_and(build_lit(c, 4), build_lit(c, 8)), e2);
+
+  TEST_TRUE(build_lit(d), e2);    TEST_TRUE(build_lit(e), e2);
+  TEST_FALS(build_lit(d, 1), e2); TEST_FALS(build_lit(e, 1), e2);
+  TEST_FALS(build_lit(d, 2), e2); TEST_FALS(build_lit(e, 2), e2);
+  TEST_TRUE(build_lit(d, 4), e2); TEST_TRUE(build_lit(e, 4), e2);
+  TEST_TRUE(build_lit(d, 8), e2); TEST_TRUE(build_lit(e, 8), e2);
 }

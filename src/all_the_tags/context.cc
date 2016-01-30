@@ -494,7 +494,7 @@ void Context::destroy_entity(Entity *e) {
 
   // remove all the tags from this entity
   while(e->tags.size()) {
-    e->remove_tag(e->tags.begin()->tag);
+    e->remove_tag(e->tags.begin()->first);
   }
 
   assert(id_to_entity.erase(e->id) == 1);

@@ -21,12 +21,17 @@ Token token(const char*& clause_str);
 int main(int argc, char** argv) {
     Context context;
 
+    int i = 0;
     std::string line;
-    while(true) {
+    while(i < 20) {
+        i++;
+
         std::getline(std::cin, line);
         if(std::cin.eof()) {
             break;
         }
+
+        line = line.substr(std::min(line.length(), 30UL));
 
         std::stringstream stream(line);
         std::string cmd;

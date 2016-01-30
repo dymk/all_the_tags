@@ -7,13 +7,16 @@
 #include <functional>
 #include <queue>
 #include <vector>
+#include <bitset>
 
 int QueryClauseMetaNode::entity_count() const {
   return node->entity_count();
 }
 void QueryClauseMetaNode::debug_print(int indent) const {
   print_indent(indent);
-  std::cerr << "meta(" << entity_count() << ") : ";
+  std::cerr << "meta(" << entity_count() << ") (";
+  std::cerr << std::bitset<8>(rel);
+  std::cerr << ") : ";
   node->print_tag_set(std::cerr);
   std::cerr << std::endl;
 }
@@ -44,7 +47,7 @@ QueryClause *build_lit(Tag *tag, rel_type rel) {
     recurse(tag->meta_node);
 
     for(auto node : meta_nodes) {
-      auto built = new QueryClauseMetaNode(node);
+      auto built = new QueryClauseMetaNode(node, rel);
       if(!clause) { clause = built; }
       else        { clause = build_or(clause, built); }
     }
@@ -244,7 +247,7 @@ bool extern_set_has_tag(const Entity::tags_set* tags, Tag* tag) {
 }
 bool extern_set_has_meta(const Entity::tags_set* tags, const SCCMetaNode* node) {
   for(auto t : *tags) {
-    if(t.tag->meta_node == node) return true;
+    if(t.first->meta_node == node) return true;
   }
 
   return false;
