@@ -13,9 +13,15 @@ struct SCCMetaNode;
 struct Tag {
   id_type id;
 
+  typedef std::unordered_set<
+    Tag*,
+    std::hash<Tag*>,
+    std::equal_to<Tag*>,
+    std::allocator<Tag*> > tag_set;
+
   // TODO: implement tag implications
-  std::unordered_set<Tag*> implies;
-  std::unordered_set<Tag*> implied_by;
+  tag_set implies;
+  tag_set implied_by;
 
   Context *context;
 
