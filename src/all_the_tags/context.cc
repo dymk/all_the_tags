@@ -9,20 +9,11 @@ struct Tag;
 
 static bool debug = false;
 
-int SCCMetaNode::entity_count() const {
-  int sum = 0;
-  for(auto t : tags) { sum += t->entity_count(); }
-  return sum;
-}
-
 Context::~Context() {
   for(auto node : meta_nodes) {
     delete node;
   }
   for(auto pair : id_to_tag) {
-    delete pair.second;
-  }
-  for(auto pair : id_to_entity) {
     delete pair.second;
   }
 }
@@ -47,33 +38,48 @@ void Context::dirty_tag_imply_dag(Tag* tag, bool gained_imply, Tag* target) {
   if(this->recalc_metagraph) return;
 
   SCCMetaNode
-    *tag_mn    = tag->meta_node,
-    *target_mn = target->meta_node;
+    *tag_mn    = tag->meta_node(),
+    *target_mn = target->meta_node();
 
   if(gained_imply) {
     // tag now implies target
 
     if(!tag_mn || !target_mn) {
       if(!tag_mn) {
-        tag->meta_node = tag_mn = new SCCMetaNode();
+        tag_mn = new SCCMetaNode();
+        tag->set_meta_node(tag_mn);
         tag_mn->tags.insert(tag);
         meta_nodes.insert(tag_mn);
+
+        if(debug) {
+          std::cerr << "source tag " << tag->id << " gets new metanode" << std::endl;
+        }
       }
       if(!target_mn) {
-        target->meta_node = target_mn = new SCCMetaNode();
+        target_mn = new SCCMetaNode();
+        target->set_meta_node(target_mn);
         target_mn->tags.insert(target);
         meta_nodes.insert(target_mn);
+
+        if(debug) {
+          std::cerr << "target tag " << target->id << " gets new metanode" << std::endl;
+        }
       }
 
-      assert(tag_mn->add_child(target_mn));
+      const auto _added = tag_mn->add_child(target_mn);
+      assert(_added);
       sink_meta_nodes.erase(tag_mn);
 
       if(target_mn->children.size() == 0) {
+        // no tags in target_mn imply other tags
         sink_meta_nodes.insert(target_mn);
       }
       else {
         sink_meta_nodes.erase(target_mn);
       }
+
+      assert(tag->meta_node());
+      assert(target->meta_node());
     }
     else {
       // both tag and target already have a metanode
@@ -97,7 +103,6 @@ void Context::dirty_tag_imply_dag(Tag* tag, bool gained_imply, Tag* target) {
         }
       };
       recurse(target_mn);
-
 
       if(in_scc.size()) {
         auto tmp_in_scc = in_scc;
@@ -135,11 +140,12 @@ void Context::dirty_tag_imply_dag(Tag* tag, bool gained_imply, Tag* target) {
         }
 
         if(debug) {
-          std::cerr << "inedges: " << inedges.size() << std::endl;
-          std::cerr << "outedges: " << outedges.size() << std::endl;
+          std::cerr << "->  inedges: " << inedges.size() << std::endl;
+          std::cerr << "<- outedges: " << outedges.size() << std::endl;
         }
 
         auto new_scc_node = new SCCMetaNode();
+        assert(new_scc_node);
 
         // transfer all tags into 'new_scc_node'
         for(auto scc : in_scc) {
@@ -147,8 +153,9 @@ void Context::dirty_tag_imply_dag(Tag* tag, bool gained_imply, Tag* target) {
             if(debug) {
               std::cerr << "transfering tag " << t->id << std::endl;
             }
-            t->meta_node = new_scc_node;
-            assert(new_scc_node->tags.insert(t).second == true);
+            t->set_meta_node(new_scc_node);
+            const auto _inserted = new_scc_node->tags.insert(t).second;
+            assert(_inserted);
           }
         }
 
@@ -193,67 +200,14 @@ void Context::dirty_tag_imply_dag(Tag* tag, bool gained_imply, Tag* target) {
     }
   }
   else {
-    // the two nodes must be part of the DAG if they're having an implication
-    // between them removed
-    assert(tag_mn);
-    assert(target_mn);
-
-    // check if there's a path between target_mn and tag_mn
-    // if there is then a cycle was broken
-    if(tag_mn == target_mn) {
-      this->recalc_metagraph = true;
-    }
-    else {
-      // tags were in different SCCs, simply disconnect the two DAG nodes
-      // and update sinks/remove node entirely if possible
-
-      // collect all the outgoing edges from tags in this, if any
-      // go to tags that are in the metanode 'target_mn' there's another
-      // way to get to 'target_mn'
-      bool another_path_to_target = false;
-      for(auto tag : tag_mn->tags) {
-        for(auto implied : tag->implies) {
-          if(implied->meta_node && implied->meta_node == target_mn) {
-            another_path_to_target = true;
-            goto Louter;
-          }
-        }
-      }
-      Louter:
-
-      if(another_path_to_target) {
-        // another direct edge to the target; don't remove the DAG edge
-        // nop <- is intentional
-      }
-      else {
-        assert(tag_mn->remove_child(target_mn));
-
-        auto check_scc = [&](SCCMetaNode* node) {
-          // if node has one tag, no children and no parents, it can be removed
-          // from existance
-          if(
-            node->tags.size() == 1 &&
-            node->children.empty() &&
-            node->parents.empty()) {
-            for(auto tag : node->tags) {
-              tag->meta_node = nullptr;
-            }
-
-            sink_meta_nodes.erase(node);
-            meta_nodes.erase(node);
-            delete node;
-          }
-          else
-          if(node->children.empty()) {
-            // no children, means this is a sink node
-            sink_meta_nodes.insert(node);
-          }
-        };
-
-        check_scc(tag_mn);
-        check_scc(target_mn);
-      }
-    }
+    // removal can be hard
+    // consider the case
+    // a <-> b, a -> c, b -> c
+    // so {a, b} -> {c}
+    // how to fix up the graph if `b -> c` is unimplied?
+    // old algo would have severed the link between the
+    // metanodes
+    this->recalc_metagraph = true;
   }
 }
 
@@ -264,7 +218,7 @@ void Context::make_clean() {
 
   // clear metanode for all tags
   for(auto id_tag : id_to_tag) {
-    id_tag.second->meta_node = nullptr;
+    id_tag.second->clear_meta_node();
   }
 
   auto get_new_scc = [&]() {
@@ -273,7 +227,8 @@ void Context::make_clean() {
     }
     else {
       auto ret = *(meta_nodes.begin());
-      assert(meta_nodes.erase(ret) == 1);
+      const auto _erased = meta_nodes.erase(ret);
+      assert(_erased == 1);
       ret->children.clear();
       ret->parents.clear();
       ret->tags.clear();
@@ -362,7 +317,7 @@ void Context::make_clean() {
         tarjan_stack.pop();
 
         component->tags.insert(w->tag);
-        w->tag->meta_node = component;
+        w->tag->set_meta_node(component);
         w->on_stack = false;
 
         if(w == v) break;
@@ -412,7 +367,7 @@ void Context::make_clean() {
           std::cerr << "tarjan: checking edge " << tag->id << " -> " << implied->id << std::endl;
         }
 
-        auto imn = implied->meta_node;
+        auto imn = implied->meta_node();
         assert(imn);
         if(imn != top) {
           auto ret = top->add_child(imn);
@@ -430,7 +385,8 @@ void Context::make_clean() {
   sink_meta_nodes.clear();
   for(auto node : meta_nodes) {
     if(node->children.empty()) {
-      assert(sink_meta_nodes.insert(node).second);
+      const auto _inserted = sink_meta_nodes.insert(node).second;
+      assert(_inserted);
     }
   }
 }
@@ -461,10 +417,15 @@ Tag *Context::new_tag() {
 void Context::destroy_tag(Tag *tag) {
   assert(tag->context == this && "tag must be on this context");
 
-  // remove tag from all matching entities
-  for(auto&& e : id_to_entity) {
-    Entity *entity = e.second;
-    entity->remove_tag(tag);
+  // remove from all tags
+  for(auto&& e : id_to_tag) {
+    Tag* obj = e.second;
+    obj->remove_tag(tag);
+  }
+
+  // remove all the tags from this entity
+  while(tag->tags.size()) {
+    tag->remove_tag(tag->tags.begin()->first);
   }
 
   // remove all impliers
@@ -479,63 +440,21 @@ void Context::destroy_tag(Tag *tag) {
   }
 
   // remove from its SCC metanode
-  if(tag->meta_node) {
-    assert(tag->meta_node->tags.erase(tag) == 1);
+  if(tag->meta_node()) {
+    const auto _erased = tag->meta_node()->tags.erase(tag);
+    assert(_erased == 1);
   }
 
-  assert(id_to_tag.erase(tag->id) == 1);
-  delete tag;
-}
-
-void Context::destroy_entity(Entity *e) {
-  auto found = id_to_entity.find(e->id);
-  assert(found != id_to_entity.end());
-  assert(found->second == e);
-
-  // remove all the tags from this entity
-  while(e->tags.size()) {
-    e->remove_tag(e->tags.begin()->first);
-  }
-
-  assert(id_to_entity.erase(e->id) == 1);
-  delete e;
-}
-
-Entity* Context::new_entity(id_type id) {
-  if(id_to_entity.find(id) == id_to_entity.end()) {
-    // id not present
-    auto e = new Entity(id);
-    id_to_entity.insert(std::make_pair(id, e));
-    return e;
-  }
-
-  return nullptr;
-}
-
-Entity* Context::new_entity() {
-  // no ID given, keep looping until we find the next available ID
-  while(true) {
-    auto e = new_entity(last_entity_id++);
-    if(e) {
-      return e;
-    }
+  {
+    const auto _erased = id_to_tag.erase(tag->id);
+    assert(_erased == 1 && "didn't erase from internal list?");
+    delete tag;
   }
 }
 
 Tag* Context::tag_by_id(id_type tid) const {
   auto iter = id_to_tag.find(tid);
   if(iter != id_to_tag.end()) {
-    return (*iter).second;
-  }
-  else {
-    return nullptr;
-  }
-}
-
-// entity lookup functions
-Entity* Context::entity_by_id(id_type eid) const {
-  auto iter = id_to_entity.find(eid);
-  if(iter != id_to_entity.end()) {
     return (*iter).second;
   }
   else {

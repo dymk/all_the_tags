@@ -9,7 +9,7 @@ QueryClause *parse(Context& c, const char*& clause_str);
 
 // 0 -> inf are TokID (integer numbers)
 // -1 -> -inf are reserved for other tokens
-enum Token : int {
+enum Token {
     TokInv    = -1,
     TokEnd    = -2,
     TokAnd    = -3,
@@ -59,36 +59,16 @@ int main(int argc, char** argv) {
             }
         }
         else
-        if(cmd == "ebid") {
-            if(have_op1) {
-                auto e1 = context.entity_by_id(op1);
-                if(e1) {
-                    std::cerr << "got ent " << e1->id << " (" << e1 << ")" << std::endl;
-                }
-                else {
-                    std::cerr << "no ent " << op1 << std::endl;
-                }
-            }
-        }
-        else
         if(cmd == "tag") {
-            std::cerr << "add tag" << std::endl;
+            std::cerr << "add tag";
             if(have_op1) {
+                std::cerr << " " << op1;
                 context.new_tag(op1);
             }
             else {
                 context.new_tag();
             }
-        }
-        else
-        if(cmd == "ent") {
-            std::cerr << "add ent" << std::endl;
-            if(have_op1) {
-                context.new_entity(op1);
-            }
-            else {
-                context.new_entity();
-            }
+            std::cerr << std::endl;
         }
         else
         if(cmd == "rmt") {
@@ -100,24 +80,7 @@ int main(int argc, char** argv) {
                     std::cerr << op1 << std::endl;
                 }
                 else {
-                    std::cerr << "none such" << std::endl;
-                }
-            }
-            else {
-                std::cerr << "error: " << line << std::endl;
-            }
-        }
-        else
-        if(cmd == "rme") {
-            std::cerr << "rm ent: ";
-            if(have_op1) {
-                Entity *e = context.entity_by_id(op1);
-                if(e) {
-                    context.destroy_entity(e);
-                    std::cerr << op1 << std::endl;
-                }
-                else {
-                    std::cerr << "none such" << std::endl;
+                    std::cerr << "none such " << op1 << std::endl;
                 }
             }
             else {
@@ -129,7 +92,7 @@ int main(int argc, char** argv) {
             std::cerr << "taggify: ";
             if(have_op1 && have_op2) {
                 Tag* tag = context.tag_by_id(op1);
-                Entity* ent = context.entity_by_id(op2);
+                Tag* ent = context.tag_by_id(op2);
 
                 if(!tag || !ent) {
                     std::cerr << "error: ";
@@ -223,6 +186,7 @@ int main(int argc, char** argv) {
                 flags = (QueryOptFlags) tok;
             }
 
+            context.make_clean();
             QueryClause *clause = parse(context, c_clause);
             if(clause) {
                 std::cerr << "num ents before: " << clause->entity_count() << std::endl;
@@ -230,8 +194,8 @@ int main(int argc, char** argv) {
                 std::cerr << "num ents after:  " << clause->entity_count() << std::endl;
 
                 std::cerr << "matching: ";
-                context.query(clause, [&](const Entity *e) {
-                    std::cerr << e->id << ", ";
+                context.query(clause, [&](Tag const* tag) {
+                    std::cerr << tag->id << ", ";
                 });
                 std::cerr << std::endl;
 

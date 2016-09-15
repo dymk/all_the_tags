@@ -6,9 +6,16 @@
 #include "all_the_tags/query.h"
 
 #include <memory>
+#include <unordered_set>
 
 #define SET(T, ARR...) std::unordered_set<T>(ARR)
 
-std::unordered_set<Entity*> query(const Context& c, const QueryClause& query);
+template <typename T>
+T* enforce(T* p) {
+    assert(p);
+    return p;
+}
+
+std::unordered_set<Tag*> query(const Context& c, const QueryClause& query);
 
 #endif

@@ -5,19 +5,17 @@ static bool debug = true;
 class QueryTest : public ::testing::Test {
 public:
   Context ctx;
-  Entity *e1, *e2;
+  Tag *e1, *e2;
   Tag *a, *b, *c, *d, *e;
 
   void SetUp() {
-    e1 = ctx.new_entity();
-    e2 = ctx.new_entity();
-    assert(e1 && e2);
-
-    assert(a = ctx.new_tag());
-    assert(b = ctx.new_tag());
-    assert(c = ctx.new_tag());
-    assert(d = ctx.new_tag());
-    assert(e = ctx.new_tag());
+    ASSERT_NE(nullptr, e1 = ctx.new_tag());
+    ASSERT_NE(nullptr, e2 = ctx.new_tag());
+    ASSERT_NE(nullptr, a = ctx.new_tag());
+    ASSERT_NE(nullptr, b = ctx.new_tag());
+    ASSERT_NE(nullptr, c = ctx.new_tag());
+    ASSERT_NE(nullptr, d = ctx.new_tag());
+    ASSERT_NE(nullptr, e = ctx.new_tag());
   }
 };
 
@@ -106,9 +104,9 @@ TEST_F(QueryTest, QueryAndOptims2) {
 }
 
 TEST_F(QueryTest, NestedOrs) {
-  for(int i = 0; i <  5; i++) { ctx.new_entity()->add_tag(a); }
-  for(int i = 0; i < 10; i++) { ctx.new_entity()->add_tag(b); }
-  for(int i = 0; i < 20; i++) { ctx.new_entity()->add_tag(c); }
+  for(int i = 0; i <  5; i++) { ctx.new_tag()->add_tag(a); }
+  for(int i = 0; i < 10; i++) { ctx.new_tag()->add_tag(b); }
+  for(int i = 0; i < 20; i++) { ctx.new_tag()->add_tag(c); }
 
   auto query =
     build_or(
@@ -129,9 +127,9 @@ TEST_F(QueryTest, NestedOrs) {
 }
 
 TEST_F(QueryTest, NestedAnds) {
-  for(int i = 0; i <  5; i++) { ctx.new_entity()->add_tag(a); }
-  for(int i = 0; i < 10; i++) { ctx.new_entity()->add_tag(b); }
-  for(int i = 0; i < 20; i++) { ctx.new_entity()->add_tag(c); }
+  for(int i = 0; i <  5; i++) { ctx.new_tag()->add_tag(a); }
+  for(int i = 0; i < 10; i++) { ctx.new_tag()->add_tag(b); }
+  for(int i = 0; i < 20; i++) { ctx.new_tag()->add_tag(c); }
 
   auto query =
     build_and(
@@ -152,9 +150,9 @@ TEST_F(QueryTest, NestedAnds) {
 }
 
 TEST_F(QueryTest, Implication1) {
-  for(int i = 0; i <  5; i++) { ctx.new_entity()->add_tag(a); }
-  for(int i = 0; i < 10; i++) { ctx.new_entity()->add_tag(b); }
-  for(int i = 0; i < 20; i++) { ctx.new_entity()->add_tag(c); }
+  for(int i = 0; i <  5; i++) { ctx.new_tag()->add_tag(a); }
+  for(int i = 0; i < 10; i++) { ctx.new_tag()->add_tag(b); }
+  for(int i = 0; i < 20; i++) { ctx.new_tag()->add_tag(c); }
 
   a->imply(b);
   b->imply(a);

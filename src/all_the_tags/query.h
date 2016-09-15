@@ -7,7 +7,6 @@
 #include <bitset>
 
 #include "all_the_tags/tag.h"
-#include "all_the_tags/entity.h"
 
 struct QueryClause;
 struct QueryClauseBin;
@@ -29,7 +28,7 @@ QueryClause    *optimize(QueryClause *clause, QueryOptFlags flags = QueryOptFlag
 // root clause AST type
 struct QueryClause {
   // returns true/false if the clause matches a given unordered set
-  virtual bool matches_set(const Entity::tags_set& tags) const = 0;
+  virtual bool matches_set(const Tag::tagging_map& tags) const = 0;
   virtual ~QueryClause() {}
 
   virtual int depth() const = 0;
@@ -53,7 +52,7 @@ struct QueryClauseNot : public QueryClause {
   QueryClauseNot(QueryClause *c_) : c(c_) {}
   virtual ~QueryClauseNot() { delete c; }
 
-  virtual bool matches_set(const Entity::tags_set& tags) const {
+  virtual bool matches_set(const Tag::tagging_map& tags) const {
     return !(c->matches_set(tags));
   }
 
@@ -90,7 +89,7 @@ struct QueryClauseBin : public QueryClause {
     if(r) delete r;
   }
 
-  virtual bool matches_set(const Entity::tags_set& tags) const {
+  virtual bool matches_set(const Tag::tagging_map& tags) const {
     if(type == QueryClauseAnd) {
       return l->matches_set(tags) && r->matches_set(tags);
     }
@@ -134,11 +133,11 @@ struct QueryClauseLit : public QueryClause {
     t(t_), rel_mask(rel_mask_) {}
 
   virtual ~QueryClauseLit() { t = nullptr; }
-  virtual bool matches_set(const Entity::tags_set& tags) const {
+  virtual bool matches_set(const Tag::tagging_map& tags) const {
     return QueryClauseLit::matches_set(t, rel_mask, tags);
   }
 
-  static inline bool matches_set(Tag *const tag, const rel_type rel_mask, const Entity::tags_set& tags) {
+  static inline bool matches_set(Tag *const tag, const rel_type rel_mask, const Tag::tagging_map& tags) {
     auto iter = tags.find(tag);
     if(iter == tags.end()) {
       return false;
@@ -168,16 +167,17 @@ struct QueryClauseMetaNode : public QueryClause {
   QueryClauseMetaNode(SCCMetaNode *node_, rel_type rel_) : node(node_), rel(rel_) {}
   virtual ~QueryClauseMetaNode() { node = nullptr; }
 
-  virtual bool matches_set(const Entity::tags_set& tags) const {
+  virtual bool matches_set(const Tag::tagging_map& tags) const {
     return QueryClauseMetaNode::matches_set(node, rel, tags);
   }
 
-  static inline bool matches_set(SCCMetaNode const* node, const rel_type rel, const Entity::tags_set& tags) {
+  static inline bool matches_set(SCCMetaNode const* node, const rel_type rel, const Tag::tagging_map& tags) {
+    assert(node);
     // do any of the tags belong to this metanode
     // TODO: store set of relevant meta_nodes on posts instead of
     // tags directly
     for(auto t : tags) {
-      if((t.first->meta_node == node) && (t.second & rel)) {
+      if((t.first->meta_node() == node) && (t.second & rel)) {
         return true;
       }
     }
@@ -197,7 +197,7 @@ struct QueryClauseMetaNode : public QueryClause {
 
 // represents an empty clause (matches everything)
 struct QueryClauseAny : public QueryClause {
-  virtual bool matches_set(const Entity::tags_set& tags) const {
+  virtual bool matches_set(const Tag::tagging_map& tags) const {
     (void)tags;
     return true;
   }

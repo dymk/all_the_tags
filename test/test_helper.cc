@@ -1,8 +1,8 @@
 #include "test_helper.h"
 
-std::unordered_set<Entity*> query(const Context& c, const QueryClause& query) {
-  auto set = SET(Entity*, {});
-  c.query(&query, [&](Entity* e) {
+std::unordered_set<Tag*> query(const Context& c, const QueryClause& query) {
+  std::unordered_set<Tag*> set;
+  c.query(&query, [&](Tag* e) {
     set.insert(e);
   });
   return std::move(set);

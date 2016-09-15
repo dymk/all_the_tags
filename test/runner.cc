@@ -11,11 +11,9 @@ int main(int argc, char** argv) {
 
   if(bench_mem) {
       Context c;
+      for(int i = 0; i < 1000000; i++) { c.new_tag(i); }
 
-      for(int i = 0; i < 1000000; i++) { c.new_entity(i); }
-      for(int i = 0; i < 1500000; i++) { c.new_tag(i); }
-
-      std::cout << "created 1M entities, 1M tags...";
+      std::cout << "created 100k tags...";
   }
   else {
       // run google tests!

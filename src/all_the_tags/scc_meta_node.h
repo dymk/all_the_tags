@@ -32,7 +32,8 @@ struct SCCMetaNode {
       scc->parents.erase(this);
     }
     while(children.size()) {
-      assert(children.erase(*(children.begin())));
+      const auto _erased = children.erase(*(children.begin()));
+      assert(_erased);
     }
 
     for(auto scc : parents) {
@@ -59,7 +60,11 @@ struct SCCMetaNode {
     return os;
   }
 
-  int entity_count() const;
+  int entity_count() const {
+    int sum = 0;
+    for(auto t : tags) { sum += t->entity_count(); }
+    return sum;
+  }
 };
 
 #endif /* __SCC_META_NODE_H__ */

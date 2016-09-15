@@ -11,7 +11,7 @@ public:
   Tag *foo, *bar, *baz, *qux;
   QueryClause *q_foo, *q_bar, *q_baz, *q_qux;
 
-  Entity* e1;
+  Tag* t1;
 
 
   virtual void SetUp() {
@@ -26,15 +26,15 @@ public:
     baz->imply(qux);
 
     // create a few dummy entities
-    for(int i = 0; i < 1000; i++) { c.new_entity(); }
+    for(int i = 0; i < 1000; i++) { c.new_tag(); }
 
-    e1 = c.new_entity();
-    e1->add_tag(foo, 1);
-    e1->add_tag(bar, 1);
+    t1 = c.new_tag();
+    t1->add_tag(foo, 1);
+    t1->add_tag(bar, 1);
 
-    for(int i = 0; i < 1000; i++) { c.new_entity()->add_tag(baz); }
-    for(int i = 0; i < 1000; i++) { c.new_entity()->add_tag(qux); }
-    for(int i = 0; i < 1000; i++) { c.new_entity(); }
+    for(int i = 0; i < 1000; i++) { c.new_tag()->add_tag(baz); }
+    for(int i = 0; i < 1000; i++) { c.new_tag()->add_tag(qux); }
+    for(int i = 0; i < 1000; i++) { c.new_tag(); }
 
     // 1 entity with "foo" and "bar"
     // 1000 with baz
@@ -58,7 +58,7 @@ public:
 
 BENCHMARK(BenchQuery, NewEntity500, 10, 50) {
   Context c;
-  for(int i = 0; i < 500; i++) { c.new_entity(); }
+  for(int i = 0; i < 500; i++) { c.new_tag(); }
 }
 BENCHMARK(BenchQuery, NewTag1000, 10, 50) {
   Context c;
@@ -69,18 +69,18 @@ BENCHMARK(BenchQuery, NewTag1000, 10, 50) {
 }
 
 BENCHMARK_F(BenchQuery, DoQuery1, 10, 100) {
-  auto set = SET(Entity*, {});
+  auto set = SET(Tag const*, {});
 
-  c.query(q_foo, [&](Entity* e) {
+  c.query(q_foo, [&](Tag const* e) {
     set.insert(e);
   });
 
-  assert(set == SET(Entity*, {e1}));
+  assert(set == SET(Tag const*, {t1}));
 }
 
 BENCHMARK_F(BenchQuery, QueryForBaz, 10, 100) {
   int count = 0;
-  c.query(q_baz, [&](Entity* e) {
+  c.query(q_baz, [&](Tag const* e) {
     count++;
   });
 
@@ -89,7 +89,7 @@ BENCHMARK_F(BenchQuery, QueryForBaz, 10, 100) {
 
 BENCHMARK_F(BenchQuery, QueryForQux, 10, 100) {
   int count = 0;
-  c.query(q_qux, [&](Entity* e) {
+  c.query(q_qux, [&](Tag const* e) {
     count++;
   });
 
@@ -106,8 +106,6 @@ public:
 
   Tag *tag_c, *tag_b1, *tag_b2, *tag_a;
   QueryClause *query_c, *query_b1, *query_b2, *query_a, *query_c_opt, *query_b1_opt, *query_b2_opt, *query_a_opt;
-
-  Entity* e1;
 
   virtual void SetUp() {
     tag_c = c.new_tag();
@@ -127,10 +125,10 @@ public:
     // query for 'b2' returns only 'b2'
     // etc
 
-    for(int i = 0; i < 1000; i++) { c.new_entity()->add_tag(tag_c); }
-    for(int i = 0; i < 400; i++)  { c.new_entity()->add_tag(tag_b1); }
-    for(int i = 0; i < 400; i++)  { c.new_entity()->add_tag(tag_b2); }
-    for(int i = 0; i < 400; i++)  { c.new_entity()->add_tag(tag_a);  }
+    for(int i = 0; i < 1000; i++) { c.new_tag()->add_tag(tag_c); }
+    for(int i = 0; i < 400; i++)  { c.new_tag()->add_tag(tag_b1); }
+    for(int i = 0; i < 400; i++)  { c.new_tag()->add_tag(tag_b2); }
+    for(int i = 0; i < 400; i++)  { c.new_tag()->add_tag(tag_a);  }
 
     query_c  = build_lit(tag_c, ALL_REL_MASK);
     query_b1 = build_lit(tag_b1, ALL_REL_MASK);
@@ -155,7 +153,7 @@ public:
 
 BENCHMARK_F(DeepBenchQuery, QueryA, 10, 100) {
   int count = 0;
-  c.query(query_a, [&](Entity* e) {
+  c.query(query_a, [&](Tag const* e) {
     count++;
   });
 
@@ -165,7 +163,7 @@ BENCHMARK_F(DeepBenchQuery, QueryA, 10, 100) {
 
 BENCHMARK_F(DeepBenchQuery, QueryB1, 10, 100) {
   int count = 0;
-  c.query(query_b1, [&](Entity* e) {
+  c.query(query_b1, [&](Tag const* e) {
     count++;
   });
 
@@ -175,7 +173,7 @@ BENCHMARK_F(DeepBenchQuery, QueryB1, 10, 100) {
 
 BENCHMARK_F(DeepBenchQuery, QueryB2, 10, 100) {
   int count = 0;
-  c.query(query_b2, [&](Entity* e) {
+  c.query(query_b2, [&](Tag const* e) {
     count++;
   });
 
@@ -184,7 +182,7 @@ BENCHMARK_F(DeepBenchQuery, QueryB2, 10, 100) {
 }
 BENCHMARK_F(DeepBenchQuery, OptQueryB2, 10, 100) {
   int count = 0;
-  c.query(query_b2_opt, [&](Entity* e) {
+  c.query(query_b2_opt, [&](Tag const* e) {
     count++;
   });
 
@@ -194,7 +192,7 @@ BENCHMARK_F(DeepBenchQuery, OptQueryB2, 10, 100) {
 
 BENCHMARK_F(DeepBenchQuery, QueryC, 10, 100) {
   int count = 0;
-  c.query(query_c, [&](Entity* e) {
+  c.query(query_c, [&](Tag const* e) {
     count++;
   });
 
@@ -203,7 +201,7 @@ BENCHMARK_F(DeepBenchQuery, QueryC, 10, 100) {
 }
 BENCHMARK_F(DeepBenchQuery, OptQueryC, 10, 100) {
   int count = 0;
-  c.query(query_c_opt, [&](Entity* e) {
+  c.query(query_c_opt, [&](Tag const* e) {
     count++;
   });
 

@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <utility>
 
-#include "all_the_tags/entity.h"
 #include "all_the_tags/query.h"
 #include "all_the_tags/scc_meta_node.h"
 
@@ -19,11 +18,8 @@ static const int ERR_CONTEXT_DIRTY = -1;
 struct Context {
 private:
   id_type last_tag_id;
-  id_type last_entity_id;
 
-  std::unordered_map<id_type,     Tag*> id_to_tag;
-
-  std::unordered_map<id_type,  Entity*> id_to_entity;
+  std::unordered_map<id_type, Tag*> id_to_tag;
 
   // does the metagraph need recalculating? call make_clean
   // to recalculate the metagraph
@@ -39,7 +35,6 @@ public:
 
   Context() :
     last_tag_id(0),
-    last_entity_id(0),
     recalc_metagraph(false)
     {}
   ~Context();
@@ -51,13 +46,6 @@ public:
   // inverse of new_tag
   void destroy_tag(Tag *t);
 
-  // returns a newly created entity
-  Entity *new_entity();
-  Entity *new_entity(id_type id);
-
-  // inverse of new_entity
-  void destroy_entity(Entity *e);
-
   // look up tag by id
   Tag* tag_by_id(id_type tid) const;
 
@@ -68,9 +56,6 @@ public:
   void dirty_tag_imply_dag(Tag* dirtying_tag, bool gained_imply, Tag* other);
 
 public:
-  // look up entity by id
-  Entity* entity_by_id(id_type eid) const;
-
   // calls 'match' callback with all entities that match the QueryClause
   // returns true if query was succesfull, false otherwise (e.g. context was dirty)
   template<class UnaryFunction>
@@ -80,7 +65,7 @@ public:
     }
 
     long i = 0;
-    for(auto&& iter : id_to_entity) {
+    for(auto&& iter : id_to_tag) {
       i++;
       auto e = iter.second;
       if(q->matches_set(e->tags)) {
@@ -93,9 +78,6 @@ public:
   // context statistics
   size_t num_tags() const {
     return id_to_tag.size();
-  }
-  size_t num_entities() const {
-    return id_to_entity.size();
   }
 
   // is a call to make_clean() required?

@@ -28,7 +28,7 @@ QueryClause *build_lit(Tag *tag) {
 QueryClause *build_lit(Tag *tag, rel_type rel) {
   QueryClause *clause = nullptr;
 
-  if(tag->meta_node) {
+  if(tag->meta_node()) {
     // if tag has a metanode, query against it rather than
     // the literal tag
 
@@ -44,7 +44,7 @@ QueryClause *build_lit(Tag *tag, rel_type rel) {
     };
 
     // collect all reachable metanodes from this node into meta_nodes
-    recurse(tag->meta_node);
+    recurse(tag->meta_node());
 
     for(auto node : meta_nodes) {
       auto built = new QueryClauseMetaNode(node, rel);
@@ -224,7 +224,7 @@ QueryClause* hc_tree_optimize(QueryClauseBin* clause) {
 struct QueryClauseJitNode : public QueryClause {
   asmjit::JitRuntime runtime;
 
-  typedef bool (*func_type)(const Entity::tags_set*);
+  typedef bool (*func_type)(const Tag::tagging_map*);
   func_type func;
 
   QueryClauseJitNode() {}
@@ -234,7 +234,7 @@ struct QueryClauseJitNode : public QueryClause {
   virtual int num_children() const { return 0; }
   virtual int entity_count() const { return 0; }
 
-  virtual bool matches_set(const Entity::tags_set& tags) const {
+  virtual bool matches_set(const Tag::tagging_map& tags) const {
     return func(&tags);
   }
 
@@ -250,11 +250,15 @@ struct QueryClauseJitNode : public QueryClause {
 };
 
 // TODO: merge this logic with the matches_set methods on MetaNode and LitNode
-bool extern_set_has_tag(Tag* tag, rel_type rel, const Entity::tags_set* tags) {
+bool extern_set_has_tag(Tag* tag, rel_type rel, const Tag::tagging_map* tags) {
   return QueryClauseLit::matches_set(tag, rel, *tags);
 }
 
-bool extern_set_has_meta(const SCCMetaNode* node, rel_type rel, const Entity::tags_set* tags) {
+bool extern_set_has_meta(
+  SCCMetaNode const* node,
+  rel_type const rel,
+  Tag::tagging_map const* tags
+) {
   return QueryClauseMetaNode::matches_set(node, rel, *tags);
 }
 
@@ -265,7 +269,7 @@ QueryClause* jit_optimize(QueryClause* clause) {
 
   X86Assembler a(&(ret->runtime));
   X86Compiler c(&a);
-  c.addFunc(FuncBuilder1<int, Entity::tags_set*>(kCallConvHost));
+  c.addFunc(FuncBuilder1<int, Tag::tagging_map*>(kCallConvHost));
 
   X86GpVar tag_set_ptr = c.newIntPtr("tag_set_ptr");
   c.setArg(0, tag_set_ptr);
@@ -278,12 +282,11 @@ QueryClause* jit_optimize(QueryClause* clause) {
   c.mov(has_meta_func_ptr, imm_ptr((void*)extern_set_has_meta));
 
   std::function<void(const QueryClause*, X86GpVar&)> codegen_tree =
-    [&c, &has_tag_func_ptr, &has_meta_func_ptr, &tag_set_ptr, &codegen_tree]
-    (const QueryClause* clause, X86GpVar& res_var)
+    [&](QueryClause const* clause, X86GpVar& res_var)
   {
     if(auto bin = dynamic_cast<const QueryClauseBin*>(clause)) {
       codegen_tree(bin->l, res_var);
-      Label Lcompare_done(c);
+      Label Lcompare_done = c.newLabel();
 
       c.test(res_var, res_var);
       if(bin->type == QueryClauseAnd) {
